@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gym Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#0d0d10;--bg2:#141418;--bg3:#1c1c22;--bg4:#24242c;--bg5:#2e2e38;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.22);
+  --text:#eeeef0;--muted:#8888a0;--muted2:#55556a;
+  --purple:#8b7cf8;--purple2:#b3a8fb;--pdim:rgba(139,124,248,0.15);
+  --teal:#4ecba4;--tdim:rgba(78,203,164,0.12);
+  --amber:#f0a050;--adim:rgba(240,160,80,0.12);
+  --red:#f06070;--rdim:rgba(240,96,112,0.1);
+  --blue:#5aaaf0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+.shell{display:flex;height:100vh}
+/* Sidebar */
+.sidebar{width:210px;min-width:210px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.logo h1{font-size:14px;font-weight:600;background:linear-gradient(135deg,var(--purple2),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
+.nav{padding:8px;flex:1}
+.nav-group{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;padding:10px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s;margin-bottom:2px;position:relative;border-left:2px solid transparent}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.on{background:var(--pdim);color:var(--purple2);font-weight:500;border-left-color:var(--purple)}
+.ni{font-size:15px;width:20px;text-align:center}
+.sidebar-foot{padding:12px 10px;border-top:1px solid var(--border)}
+.sidebar-foot label{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;display:block;margin-bottom:5px}
+/* Main */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.topbar{height:50px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:var(--bg);flex-shrink:0}
+.topbar h2{font-size:15px;font-weight:500}
+.topbar-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2)}
+.pages{flex:1;overflow-y:auto;padding:22px}
+.page{display:none}.page.on{display:block}
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:13px;padding:16px 20px;margin-bottom:14px}
+.card-title{font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:12px}
+/* Buttons */
+.btn{padding:7px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:var(--bg3);color:var(--text);display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--bg4);border-color:var(--border3)}
+.btn.pri{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn.pri:hover{opacity:.85}
+.btn.teal{background:var(--tdim);border-color:var(--teal);color:var(--teal)}
+.btn.danger{background:var(--rdim);border-color:var(--red);color:var(--red)}
+.btn.sm{padding:4px 11px;font-size:12px;border-radius:7px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+/* Help tooltip - fixed positioning via JS */
+.help{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:var(--bg4);border:1px solid var(--border2);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:'DM Mono',monospace;vertical-align:middle}
+.help:hover{background:var(--pdim);border-color:var(--purple);color:var(--purple2)}
+.help-bubble{display:none;position:fixed;background:var(--bg4);border:1px solid var(--border2);border-radius:10px;padding:10px 13px;width:230px;font-size:12px;color:var(--text);line-height:1.5;z-index:9999;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+/* Forms */
+input[type=text],input[type=number],input[type=date],select,textarea{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;transition:border-color .15s;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--purple);background:var(--bg4)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.5}
+label.lbl{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.fg{margin-bottom:11px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+/* Day pills */
+.dpills{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:0}
+.dpill{padding:7px 15px;border-radius:18px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .15s}
+.dpill:hover{color:var(--text);border-color:var(--border3)}
+.dpill.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:0 0 12px rgba(139,124,248,.3)}
+/* Feeling */
+.feeling-row{display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--bg3);border-radius:9px;border:1px solid var(--border);margin-bottom:14px}
+.feeling-row span{font-size:12px;color:var(--muted)}
+.fb{width:32px;height:32px;border-radius:50%;border:1px solid var(--border2);background:var(--bg4);color:var(--muted);cursor:pointer;font-size:15px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.fb:hover{border-color:var(--purple);color:var(--text)}
+.fb.on{background:var(--purple);border-color:var(--purple);color:#fff}
+/* Exercise section */
+.ex-sec{background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:13px 15px;margin-bottom:11px}
+.ex-sec-head{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap}
+.ex-sec-name{font-size:14px;font-weight:500}
+.set-tbl{width:100%;border-collapse:collapse}
+.set-tbl th{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;padding:5px 4px;border-bottom:1px solid var(--border);text-align:center}
+.set-tbl th:first-child{text-align:left}
+.set-tbl td{padding:5px 3px;border-bottom:1px solid var(--border);vertical-align:middle}
+.set-tbl tr:last-child td{border-bottom:none}
+.set-tbl input[type=number]{background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;text-align:center;padding:5px 2px;min-width:54px}
+.set-tbl input[type=number]:focus{outline:none;border-color:var(--purple)}
+.sn{font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);padding:0 4px}
+.s1bg{background:rgba(240,160,80,.05)}
+/* Badges */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:7px;letter-spacing:.04em;text-transform:uppercase}
+.b-s{background:var(--pdim);color:var(--purple2)}
+.b-c{background:var(--tdim);color:var(--teal)}
+.b-h{background:var(--adim);color:var(--amber)}
+.b-p{background:var(--rdim);color:var(--red)}
+/* Library */
+.ex-item{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--bg3);border-radius:9px;border:1px solid var(--border);margin-bottom:5px}
+.ex-item:hover{border-color:var(--border2)}
+/* Day builder */
+.day-bld{background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:9px}
+.day-bld-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.day-num{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);background:var(--bg4);padding:3px 7px;border-radius:5px;border:1px solid var(--border2)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{display:flex;align-items:center;gap:5px;padding:3px 9px;background:var(--bg4);border:1px solid var(--border2);border-radius:12px;font-size:12px}
+.chip-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+.chip-x:hover{color:var(--red)}
+/* Cycles list */
+.cy-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+.cy-row:last-child{border-bottom:none}
+/* Stats */
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:16px}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:13px;text-align:center}
+.stat-v{font-size:24px;font-weight:600;font-family:'DM Mono',monospace;background:linear-gradient(135deg,var(--purple2),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-l{font-size:11px;color:var(--muted);margin-top:2px}
+/* Chart */
+.chart-wrap{position:relative;height:240px}
+/* Report */
+.rep-area{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:13px;resize:vertical;line-height:1.6;min-height:340px}
+/* Tag filter */
+.tfs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.tf{padding:4px 12px;border-radius:13px;font-size:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .12s}
+.tf:hover{color:var(--text)}
+.tf.on{background:var(--purple);border-color:var(--purple);color:#fff}
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:50;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.overlay.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:560px;max-width:96vw;max-height:84vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.modal-title{font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:space-between}
+.modal-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1}
+.modal-x:hover{color:var(--text)}
+.modal-body{flex:1;overflow-y:auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);padding-top:12px}
+.grp-hdr{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;padding:9px 0 4px;border-top:1px solid var(--border);margin-top:5px}
+.grp-hdr:first-child{border-top:none;margin-top:0}
+.pk-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer;transition:background .12s}
+.pk-item:hover{background:var(--bg4)}
+.pk-item.sel{background:var(--pdim)}
+.pk-item input[type=checkbox]{accent-color:var(--purple);width:14px;height:14px;cursor:pointer}
+/* Toggle */
+.tog{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;font-size:12px;color:var(--muted)}
+.tog input{display:none}
+.tog-track{width:32px;height:17px;background:var(--bg5);border:1px solid var(--border2);border-radius:9px;position:relative;transition:background .2s;flex-shrink:0}
+.tog input:checked+.tog-track{background:var(--teal);border-color:var(--teal)}
+.tog-thumb{position:absolute;top:2px;left:2px;width:11px;height:11px;background:#fff;border-radius:50%;transition:transform .2s}
+.tog input:checked~.tog-thumb{transform:translateX(15px)}
+/* Cardio */
+.cmode-row{display:flex;gap:7px;margin-bottom:12px}
+.cmode{padding:6px 16px;border-radius:18px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:var(--bg4);color:var(--muted);cursor:pointer;transition:all .15s}
+.cmode.on{background:var(--teal);border-color:var(--teal);color:#0d2018}
+.cf-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.cf-row label{min-width:130px;margin:0;font-size:12px;color:var(--muted)}
+.cf-row input{width:90px;text-align:center}
+.unit{font-size:11px;color:var(--muted)}
+/* Date picker row */
+.date-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:9px;border:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
+.date-row label{font-size:12px;color:var(--muted);margin:0;white-space:nowrap}
+.date-lbl{font-size:12px;color:var(--teal);font-family:'DM Mono',monospace}
+/* Mini calendrier */
+.cal-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s;font-family:'DM Sans',sans-serif}
+.cal-btn:hover{border-color:var(--purple);background:var(--pdim)}
+.cal-btn .cal-icon{font-size:14px;opacity:.7}
+.cal-popup{display:none;position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:13px;padding:14px;z-index:500;box-shadow:0 16px 40px rgba(0,0,0,.6);width:256px}
+.cal-popup.open{display:block}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-head span{font-size:13px;font-weight:500}
+.cal-nav{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;transition:color .12s}
+.cal-nav:hover{color:var(--text)}
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
+.cal-dow span{text-align:center;font-size:10px;font-weight:600;color:var(--muted2);letter-spacing:.04em;padding:3px 0}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-day{display:flex;align-items:center;justify-content:center;height:30px;border-radius:7px;font-size:12px;cursor:pointer;color:var(--muted);transition:all .12s;border:1px solid transparent}
+.cal-day:hover{background:var(--bg4);color:var(--text)}
+.cal-day.today{border-color:var(--border2);color:var(--text)}
+.cal-day.selected{background:var(--purple);color:#fff;border-color:var(--purple);font-weight:600}
+.cal-day.other-month{opacity:.3}
+.cal-day.future{opacity:.25;pointer-events:none}
+.cal-shortcuts{display:flex;gap:5px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.cal-sc{flex:1;padding:5px 0;text-align:center;font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;cursor:pointer;color:var(--muted);transition:all .12s}
+.cal-sc:hover{color:var(--text);border-color:var(--border3)}
+/* Toast */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--bg2);border:1px solid var(--teal);color:var(--teal);padding:10px 18px;border-radius:11px;font-size:13px;font-weight:500;z-index:200;opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+/* Empty */
+.empty{text-align:center;padding:44px 22px;color:var(--muted)}
+.empty-ico{font-size:32px;margin-bottom:10px;opacity:.35}
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="sidebar">
+  <div class="logo">
+    <h1>Gym Tracker</h1>
+    <p id="sb-date"></p>
+  </div>
+  <div class="nav">
+    <div class="nav-group">Entraînement</div>
+    <div class="nav-item on" onclick="goPage('session',this)"><span class="ni">▶</span>Séance du jour</div>
+    <div class="nav-item" onclick="goPage('cycles',this)"><span class="ni">⊞</span>Programmes</div>
+    <div class="nav-item" onclick="goPage('progress',this)"><span class="ni">↗</span>Progression</div>
+    <div class="nav-group">Export</div>
+    <div class="nav-item" onclick="goPage('rapport',this)"><span class="ni">&#8864;</span>Rapport Claude</div>
+    <div class="nav-item" onclick="goPage('mobile',this)"><span class="ni">&#128241;</span>App Mobile</div>
+    <div class="nav-group">Config</div>
+    <div class="nav-item" onclick="goPage('library',this)"><span class="ni">&#9776;</span>Bibliothèque</div>
+  </div>
+  <div class="sidebar-foot">
+    <label>Programme actif <span class="help" id="h-prog">?<span class="help-bubble">Sélectionne le programme sur lequel tu travailles. Ce choix est mémorisé.</span></span></label>
+    <select id="sel-cycle" onchange="setActiveCycle(this.value)"><option value="">— Aucun —</option></select>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="pg-title">Séance du jour</h2>
+    <span class="topbar-date" id="tb-date"></span>
+  </div>
+  <div class="pages">
+
+    <!-- SEANCE -->
+    <div class="page on" id="page-session">
+      <div id="sess-empty" class="empty" style="display:none">
+        <div class="empty-ico">⊞</div>
+        <p>Aucun programme actif.<br>Crée un programme dans <strong>Programmes</strong> puis sélectionne-le en bas à gauche.</p>
+      </div>
+      <div id="sess-main">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--muted)">Jour :</span>
+          <div class="dpills" id="day-pills"></div>
+          <span class="help" id="h-day">?<span class="help-bubble">Clique sur le jour que tu vas effectuer. Les valeurs de ta dernière séance sont pré-remplies.</span></span>
+        </div>
+        <div class="date-row">
+          <label>Date de la séance :</label>
+          <button class="cal-btn" onclick="toggleCal(event)" id="cal-btn">
+            <span class="cal-icon">&#128197;</span>
+            <span id="date-lbl">Aujourd'hui</span>
+          </button>
+          <span class="help" id="h-date">?<span class="help-bubble">Par défaut aujourd'hui. Clique sur la date pour ouvrir le calendrier et sélectionner une date passée.</span></span>
+        </div>
+        <!-- Calendrier popup -->
+        <div class="cal-popup" id="cal-popup">
+          <div class="cal-head">
+            <button class="cal-nav" onclick="calNav(-1)">&#8249;</button>
+            <span id="cal-month-label"></span>
+            <button class="cal-nav" onclick="calNav(1)">&#8250;</button>
+          </div>
+          <div class="cal-dow">
+            <span>Lu</span><span>Ma</span><span>Me</span><span>Je</span><span>Ve</span><span>Sa</span><span>Di</span>
+          </div>
+          <div class="cal-days" id="cal-days"></div>
+          <div class="cal-shortcuts">
+            <div class="cal-sc" onclick="calSelectDate(todayISO())">Aujourd'hui</div>
+            <div class="cal-sc" onclick="calSelectDate(yesterdayISO())">Hier</div>
+            <div class="cal-sc" onclick="calSelectDate(daysAgoISO(7))">-7j</div>
+            <div class="cal-sc" onclick="calSelectDate(daysAgoISO(14))">-14j</div>
+          </div>
+        </div>
+        <div id="sess-form"></div>
+      </div>
+    </div>
+
+    <!-- PROGRAMMES -->
+    <div class="page" id="page-cycles">
+      <div class="card">
+        <div class="card-title">Nouveau programme <span class="help" id="h-cycle">?<span class="help-bubble">Crée un cycle de 3 à 7 jours. Pour chaque jour sélectionne les exercices depuis la bibliothèque.</span></span></div>
+        <div class="grid2">
+          <div class="fg"><label class="lbl">Nom du programme</label><input type="text" id="cy-name" placeholder="Ex : Mon cycle 6 jours"></div>
+          <div class="fg"><label class="lbl">Nombre de jours (3–7)</label><input type="number" id="cy-days" min="3" max="7" value="6" onchange="buildDays()"></div>
+        </div>
+        <div id="days-bld"></div>
+        <div class="btn-row">
+          <button class="btn pri" onclick="saveCycle()">✓ Enregistrer</button>
+          <button class="btn" onclick="resetBuilder()">Réinitialiser</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Programmes enregistrés</div>
+        <div id="cy-list"></div>
+      </div>
+    </div>
+
+    <!-- PROGRESSION -->
+    <div class="page" id="page-progress">
+      <div class="stats3" id="stats3"></div>
+      <div class="card">
+        <div class="card-title">Progression par exercice <span class="help" id="h-prog2">?<span class="help-bubble">Évolution de la charge maximale sur les séances enregistrées.</span></span></div>
+        <div style="margin-bottom:14px">
+          <select id="prog-ex" onchange="drawChart()" style="max-width:300px">
+            <option value="">— Choisir un exercice —</option>
+          </select>
+        </div>
+        <div class="chart-wrap"><canvas id="prog-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- RAPPORT -->
+    <div class="page" id="page-rapport">
+      <div class="card">
+        <div class="card-title">Rapport à soumettre à Claude <span class="help" id="h-rep">?<span class="help-bubble">Génère un rapport complet avec l'historique, les progressions et ton contexte. Copie et colle dans Claude.</span></span></div>
+        <div class="btn-row" style="margin-top:0;margin-bottom:12px">
+          <button class="btn pri" onclick="genReport()">⊡ Générer</button>
+          <button class="btn teal" onclick="copyReport()">⎘ Copier</button>
+        </div>
+        <textarea class="rep-area" id="rep-area" readonly placeholder="Clique sur Générer…"></textarea>
+      </div>
+    </div>
+
+    <!-- MOBILE -->
+    <div class="page" id="page-mobile">
+      <div class="card">
+        <div class="card-title">Exporter la configuration vers le mobile
+          <span class="help" id="h-mob-exp">?<span class="help-bubble">Génère un fichier JSON contenant tes cycles, exercices et dernières valeurs. Transfère ce fichier sur ton téléphone via OneDrive pour configurer l'app mobile.</span></span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          Génère le fichier de configuration à transférer sur ton téléphone via OneDrive.<br>
+          À refaire uniquement quand tu modifies ton programme ou ajoutes des exercices.
+        </p>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Ce fichier contient</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:var(--teal)">&#10003;</span> Bibliothèque d'exercices</div>
+            <div style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:var(--teal)">&#10003;</span> Structure de tes cycles</div>
+            <div style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:var(--teal)">&#10003;</span> Dernières valeurs par exercice</div>
+            <div style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:var(--teal)">&#10003;</span> Noms et jours de chaque cycle</div>
+          </div>
+        </div>
+        <button class="btn pri" onclick="exportMobile()" style="font-size:14px;padding:10px 24px">
+          &#128241; Générer config_mobile.json
+        </button>
+        <div id="mob-exp-msg" style="font-size:12px;color:var(--teal);min-height:18px;margin-top:10px;font-family:'DM Mono',monospace"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Importer une séance depuis le mobile
+          <span class="help" id="h-mob-imp">?<span class="help-bubble">Sélectionne le fichier JSON exporté depuis l'app mobile. La séance sera enregistrée dans gym.db comme si tu l'avais saisie directement sur le PC.</span></span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          Récupère le fichier de séance depuis OneDrive et importe-le ici.<br>
+          Si une séance existe déjà pour cette date et ce jour, elle sera mise à jour.
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label class="btn" style="cursor:pointer">
+            &#128194; Sélectionner le fichier séance
+            <input type="file" id="mob-import-file" accept=".json" style="display:none" onchange="importSession(event)">
+          </label>
+        </div>
+        <div id="mob-imp-msg" style="font-size:13px;min-height:20px;margin-top:12px;font-family:'DM Mono',monospace"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Guide de transfert OneDrive</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--purple2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">PC &#8594; Téléphone (config)</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.8">
+              1. Clique "Générer config_mobile.json"<br>
+              2. Le fichier se télécharge dans Téléchargements<br>
+              3. Déplace-le dans ton dossier OneDrive<br>
+              4. Sur le téléphone, ouvre OneDrive<br>
+              5. Télécharge le fichier<br>
+              6. Dans l'app mobile : "Importer config"
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Téléphone &#8594; PC (séance)</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.8">
+              1. Dans l'app mobile : "Exporter séance"<br>
+              2. Partage vers OneDrive<br>
+              3. Sur le PC, ouvre OneDrive<br>
+              4. Télécharge le fichier séance<br>
+              5. Ici : "Sélectionner le fichier séance"<br>
+              6. La séance s'enregistre dans gym.db
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BIBLIOTHEQUE -->
+    <div class="page" id="page-library">
+      <div class="card">
+        <div class="card-title">Ajouter un exercice <span class="help" id="h-lib">?<span class="help-bubble">Enrichis la bibliothèque. Les exercices ajoutés sont disponibles immédiatement dans les programmes.</span></span></div>
+        <div class="grid3">
+          <div class="fg"><label class="lbl">Nom</label><input type="text" id="ex-name" placeholder="Nom de l'exercice"></div>
+          <div class="fg"><label class="lbl">Groupe musculaire</label>
+            <select id="ex-grp"><option>Pectoraux</option><option>Dos</option><option>Epaules</option><option>Biceps</option><option>Triceps</option><option>Jambes</option><option>Mollets</option><option>Polyarticulaires</option><option>Core</option><option>Cardio</option></select>
+          </div>
+          <div class="fg"><label class="lbl">Type</label>
+            <select id="ex-type"><option value="strength">Musculation</option><option value="cardio_z2">Cardio Zone 2</option><option value="hiit">HIIT</option></select>
+          </div>
+        </div>
+        <button class="btn pri" onclick="addEx()">+ Ajouter</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Tous les exercices</div>
+        <div class="tfs" id="lib-filters"></div>
+        <div id="lib-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- Picker overlay -->
+<div class="overlay" id="pk-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="pk-title">Sélectionner les exercices</span>
+      <button class="modal-x" onclick="closePicker()">×</button>
+    </div>
+    <input type="text" id="pk-search" placeholder="Rechercher…" oninput="filterPicker()" style="flex-shrink:0">
+    <div class="modal-body" id="pk-body" style="max-height:360px;margin-top:4px"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closePicker()">Annuler</button>
+      <button class="btn pri" onclick="confirmPicker()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Composition overlay -->
+<div class="overlay" id="co-overlay">
+  <div class="modal" style="width:600px">
+    <div class="modal-title">
+      <span>Composition du cycle — soumettre à Claude</span>
+      <button class="modal-x" onclick="document.getElementById('co-overlay').classList.remove('on')">×</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted)">Copie ce texte et colle dans Claude pour une analyse de ton programme.</p>
+    <div class="modal-body">
+      <textarea class="rep-area" id="co-text" readonly style="min-height:300px;font-size:11px"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="document.getElementById('co-overlay').classList.remove('on')">Fermer</button>
+      <button class="btn teal" onclick="copyCompo()">⎘ Copier</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

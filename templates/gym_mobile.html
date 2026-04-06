@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d10">
+<title>Gym Mobile</title>
+<style>
+:root{
+  --bg:#0d0d10;--bg2:#141418;--bg3:#1c1c22;--bg4:#24242c;--bg5:#2e2e38;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --text:#eeeef0;--muted:#8888a0;--muted2:#55556a;
+  --purple:#8b7cf8;--purple2:#b3a8fb;--pdim:rgba(139,124,248,0.15);
+  --teal:#4ecba4;--tdim:rgba(78,203,164,0.12);
+  --amber:#f0a050;--adim:rgba(240,160,80,0.12);
+  --red:#f06070;--rdim:rgba(240,96,112,0.1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);font-size:15px}
+/* Layout */
+.shell{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding-top:env(safe-area-inset-top,12px)}
+.topbar-left h1{font-size:17px;font-weight:600;color:var(--text)}
+.topbar-left p{font-size:12px;color:var(--teal);font-family:'DM Mono',monospace;margin-top:1px}
+.topbar-date{font-size:11px;color:var(--muted2);font-family:'DM Mono',monospace}
+.pages{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page{display:none;padding:14px 14px 20px}
+.page.on{display:block}
+.botnav{background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;cursor:pointer;border:none;background:none}
+.bn-ico{font-size:22px;line-height:1;color:var(--muted2)}
+.bn-lbl{font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.03em}
+.bn.on .bn-ico,.bn.on .bn-lbl{color:var(--purple)}
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.card-title{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;margin-bottom:12px}
+/* Day pills */
+.dpills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.dpill{padding:9px 16px;border-radius:20px;font-size:14px;font-weight:500;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .15s}
+.dpill.on{background:var(--purple);border-color:var(--purple);color:#fff}
+/* Feeling */
+.feel-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg3);border-radius:12px;border:1px solid var(--border);margin-bottom:14px}
+.feel-lbl{font-size:14px;color:var(--muted)}
+.feel-btns{display:flex;gap:10px}
+.fb{width:42px;height:42px;border-radius:50%;border:1px solid var(--border2);background:var(--bg4);color:var(--muted);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fb.on{background:var(--purple);border-color:var(--purple);color:#fff}
+/* Timer */
+.timer-card{background:var(--bg2);border:1px solid rgba(78,203,164,0.25);border-radius:14px;padding:14px;margin-bottom:14px}
+.timer-title{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;margin-bottom:10px}
+.timer-disp{font-size:52px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;color:var(--muted2);margin:6px 0;transition:color .3s}
+.timer-disp.run{color:var(--teal)}
+.timer-disp.done{color:var(--amber)}
+.timer-prog-bg{height:5px;background:var(--bg4);border-radius:3px;margin-bottom:12px;overflow:hidden}
+.timer-prog-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .1s linear;width:0%}
+.timer-preset-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.tbtn{padding:13px 6px;border-radius:10px;font-size:14px;font-weight:600;border:1px solid rgba(78,203,164,0.3);background:rgba(78,203,164,0.08);color:var(--teal);cursor:pointer;text-align:center;transition:all .15s}
+.tbtn:active{background:rgba(78,203,164,0.2);transform:scale(0.97)}
+.tbtn.stop{border-color:rgba(240,96,112,0.3);background:rgba(240,96,112,0.06);color:var(--red)}
+.tbtn.stop:active{background:rgba(240,96,112,0.15)}
+/* Exercise block */
+.ex-block{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.ex-name{font-size:16px;font-weight:600;color:var(--text);margin-bottom:3px}
+.ex-meta{font-size:12px;color:var(--muted2);margin-bottom:12px}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;margin-left:5px}
+.b-poly{background:var(--rdim);color:var(--red)}
+.b-grp{background:var(--pdim);color:var(--purple2)}
+/* Set table */
+.set-hdrs{display:grid;grid-template-columns:44px 1fr 1fr;gap:8px;margin-bottom:5px}
+.set-hdr{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted2);text-transform:uppercase;text-align:center}
+.set-row{display:grid;grid-template-columns:44px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center}
+.set-lbl{font-size:13px;font-family:'DM Mono',monospace;color:var(--muted2);text-align:center;line-height:1.2}
+.set-lbl.heavy{color:var(--amber)}
+.set-inp-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.set-inp{width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;font-size:22px;font-weight:600;text-align:center;padding:10px 4px;-webkit-appearance:none}
+.set-inp.heavy{border-color:rgba(240,160,80,0.4);background:rgba(240,160,80,0.06)}
+.set-inp:focus{outline:none;border-color:var(--purple)}
+.prev-val{font-size:11px;color:var(--teal);font-family:'DM Mono',monospace}
+/* Tonnage */
+.tonnage-line{font-size:12px;color:var(--teal);font-family:'DM Mono',monospace;margin-top:8px;padding:7px 10px;background:rgba(78,203,164,0.06);border-radius:8px;border:1px solid rgba(78,203,164,0.15);line-height:1.5}
+/* Note */
+.note-inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:15px;padding:12px;margin-bottom:14px;font-family:inherit}
+.note-inp:focus{outline:none;border-color:var(--purple)}
+/* Save button */
+.save-btn{width:100%;padding:16px;background:var(--purple);border-radius:14px;border:none;color:#fff;font-size:17px;font-weight:600;cursor:pointer;letter-spacing:.02em;transition:opacity .15s}
+.save-btn:active{opacity:.82}
+/* Config */
+.cfg-row{display:flex;align-items:center;justify-content:space-between;padding:16px 14px;background:var(--bg3);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .15s}
+.cfg-row:active{background:var(--bg4)}
+.cfg-left h3{font-size:15px;font-weight:500;color:var(--text)}
+.cfg-left p{font-size:12px;color:var(--muted2);margin-top:2px}
+.cfg-arrow{color:var(--muted2);font-size:20px}
+/* Session list */
+.sess-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);margin-bottom:6px}
+.sess-item.synced{opacity:.5}
+.sess-date{font-size:13px;font-weight:500;color:var(--text);font-family:'DM Mono',monospace}
+.sess-label{font-size:12px;color:var(--muted2);margin-top:2px}
+.sess-badge{font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600}
+.sess-badge.new{background:var(--tdim);color:var(--teal)}
+.sess-badge.synced{background:var(--border);color:var(--muted2)}
+/* Buttons */
+.btn{padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .15s}
+.btn:active{background:var(--bg4)}
+.btn.pri{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn.teal{background:var(--tdim);border-color:var(--teal);color:var(--teal)}
+.btn.danger{background:var(--rdim);border-color:var(--red);color:var(--red)}
+.btn-full{width:100%;justify-content:center;margin-bottom:10px}
+/* Toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--bg2);border:1px solid var(--teal);color:var(--teal);padding:11px 20px;border-radius:12px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.warn{border-color:var(--amber);color:var(--amber)}
+/* Repos / empty */
+.rest-msg{text-align:center;padding:40px 20px;color:var(--muted2)}
+.rest-msg .ico{font-size:36px;margin-bottom:10px;opacity:.35}
+/* Status bar */
+.cmode-row{display:flex;gap:8px;margin-bottom:12px}
+.cmode{padding:9px 18px;border-radius:18px;font-size:14px;font-weight:500;border:1px solid var(--border2);background:var(--bg4);color:var(--muted);cursor:pointer;transition:all .15s}
+.cmode.on{background:var(--teal);border-color:var(--teal);color:#0d2018}
+.cf-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.cf-row label{min-width:120px;font-size:13px;color:var(--muted);flex-shrink:0}
+.unit{font-size:12px;color:var(--muted2)}
+.status-bar{font-size:12px;color:var(--teal);font-family:'DM Mono',monospace;min-height:18px;text-align:center;margin-top:8px}
+.status-bar.err{color:var(--red)}
+/* File input hidden */
+input[type=file]{display:none}
+/* Info box */
+.info-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--muted);line-height:1.6}
+.info-box strong{color:var(--text);font-weight:500}
+/* Stat row */
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat-val{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:var(--purple2)}
+.stat-lbl{font-size:11px;color:var(--muted2);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1 id="pg-title">Séance du jour</h1>
+    <p id="pg-sub"></p>
+  </div>
+  <span class="topbar-date" id="tb-date"></span>
+</div>
+
+<div class="pages">
+
+  <!-- SEANCE -->
+  <div class="page on" id="page-session">
+    <div id="sess-no-config" style="display:none">
+      <div class="rest-msg">
+        <div class="ico">&#9881;</div>
+        <p style="font-size:15px;margin-bottom:12px">Aucune configuration chargée.<br>Va dans <strong>Config</strong> pour importer<br>le fichier depuis le PC.</p>
+      </div>
+    </div>
+    <div id="sess-main">
+      <div class="dpills" id="day-pills"></div>
+      <div class="feel-row">
+        <span class="feel-lbl">Forme du jour</span>
+        <div class="feel-btns">
+          <div class="fb" onclick="setFeel(1,this)">–</div>
+          <div class="fb on" onclick="setFeel(2,this)">&#9711;</div>
+          <div class="fb" onclick="setFeel(3,this)">+</div>
+        </div>
+      </div>
+      <div class="timer-card">
+        <div class="timer-title">Repos entre les séries</div>
+        <div class="timer-disp" id="timer-disp">00:00</div>
+        <div class="timer-prog-bg"><div class="timer-prog-fill" id="timer-bar"></div></div>
+        <div class="timer-preset-row">
+          <div class="tbtn" onclick="startTimer(60)">1 min</div>
+          <div class="tbtn" onclick="startTimer(90)">1 min 30</div>
+          <div class="tbtn" onclick="startTimer(120)">2 min</div>
+        </div>
+        <div class="tbtn stop" onclick="stopTimer()">&#9632; Arrêter</div>
+      </div>
+      <div id="sess-form"></div>
+    </div>
+  </div>
+
+  <!-- HISTORIQUE -->
+  <div class="page" id="page-history">
+    <div class="stat-row" id="hist-stats"></div>
+    <div class="card">
+      <div class="card-title">Séances enregistrées</div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="page" id="page-config">
+
+    <!-- Adresse PC -->
+    <div class="card">
+      <div class="card-title">Connexion WiFi au PC</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+        Saisis l'adresse affichée dans la fenêtre noire de <strong>lancer.bat</strong> sur ton PC.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="pc-ip" placeholder="ex: 192.168.1.50:5000"
+          style="flex:1;background:var(--bg4);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;font-size:15px;padding:10px 12px">
+        <button class="btn teal" onclick="testConnection()" style="white-space:nowrap;padding:10px 14px">Tester</button>
+      </div>
+      <div id="conn-status" style="font-size:12px;min-height:18px;margin-top:8px;font-family:'DM Mono',monospace;color:var(--muted2)"></div>
+    </div>
+
+    <!-- Sync WiFi -->
+    <div class="card">
+      <div class="card-title">Synchronisation WiFi</div>
+      <div class="cfg-row" onclick="wifiPullConfig()" style="margin-bottom:8px">
+        <div class="cfg-left">
+          <h3>&#8681; Recevoir config depuis le PC</h3>
+          <p>Cycles, exercices, dernières valeurs</p>
+        </div>
+        <div class="cfg-arrow">&#8250;</div>
+      </div>
+      <div class="cfg-row" onclick="wifiPushSessions()">
+        <div class="cfg-left">
+          <h3>&#8679; Envoyer séances au PC</h3>
+          <p id="pending-count">0 séance(s) en attente</p>
+        </div>
+        <div class="cfg-arrow">&#8250;</div>
+      </div>
+      <div id="sync-status" style="font-size:12px;min-height:18px;margin-top:8px;font-family:'DM Mono',monospace;color:var(--muted2);text-align:center"></div>
+    </div>
+
+    <!-- Programme actif -->
+    <div class="card">
+      <div class="card-title">Programme actif</div>
+      <div id="cfg-cycle-info" style="font-size:14px;color:var(--muted2)">Aucune configuration chargée</div>
+    </div>
+
+    <!-- Fallback fichier -->
+    <div class="card">
+      <div class="card-title">Sans WiFi — transfert par fichier</div>
+      <div class="cfg-row" onclick="document.getElementById('file-config').click()" style="margin-bottom:8px">
+        <div class="cfg-left">
+          <h3>&#8681; Importer config (fichier)</h3>
+          <p>Via OneDrive ou USB</p>
+        </div>
+        <div class="cfg-arrow">&#8250;</div>
+      </div>
+      <input type="file" id="file-config" accept=".json" onchange="importConfig(event)">
+      <div class="cfg-row" onclick="exportPending()" style="margin-bottom:8px">
+        <div class="cfg-left">
+          <h3>&#8679; Exporter séances (fichier)</h3>
+          <p id="pending-count2">0 séance(s) en attente</p>
+        </div>
+        <div class="cfg-arrow">&#8250;</div>
+      </div>
+      <div class="cfg-row" onclick="if(confirm('Effacer toutes les données locales ?')) clearAll()">
+        <div class="cfg-left">
+          <h3 style="color:var(--red)">&#9747; Effacer les données locales</h3>
+          <p>Supprime config et séances du téléphone</p>
+        </div>
+        <div class="cfg-arrow">&#8250;</div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="cfg-status"></div>
+  </div>
+
+</div>
+
+<div class="botnav">
+  <button class="bn on" onclick="goPage('session',this,'Séance du jour','')">
+    <span class="bn-ico">&#9654;</span>
+    <span class="bn-lbl">Séance</span>
+  </button>
+  <button class="bn" onclick="goPage('history',this,'Historique','')">
+    <span class="bn-ico">&#128203;</span>
+    <span class="bn-lbl">Historique</span>
+  </button>
+  <button class="bn" onclick="goPage('config',this,'Configuration','')">
+    <span class="bn-ico">&#9881;</span>
+    <span class="bn-lbl">Config</span>
+  </button>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var config = null;
+var sessions = {};
+var curDay = 0;
+var curFeeling = 2;
+var timerInterval = null;
+var timerTotal = 0;
+var timerLeft = 0;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  var now = new Date();
+  document.getElementById('tb-date').textContent =
+    now.toLocaleDateString('fr-BE', {weekday:'short', day:'numeric', month:'short'});
+
+  // Charger depuis localStorage
+  try {
+    var sc = localStorage.getItem('gym_config');
+    if (sc) config = JSON.parse(sc);
+    var ss = localStorage.getItem('gym_sessions');
+    if (ss) sessions = JSON.parse(ss);
+  } catch(e) {}
+
+  renderSession();
+  updatePendingCount();
+  // Charger IP PC sauvegardée
+  var savedIp = localStorage.getItem('gym_pc_ip');
+  if (savedIp) {
+    var el = document.getElementById('pc-ip');
+    if (el) el.value = savedIp;
+  }
+}
+
+function saveLocal() {
+  try {
+    localStorage.setItem('gym_sessions', JSON.stringify(sessions));
+  } catch(e) { toast('Erreur sauvegarde locale', 'warn'); }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goPage(id, btn, title, sub) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('on'); });
+  document.querySelectorAll('.bn').forEach(function(b) { b.classList.remove('on'); });
+  document.getElementById('page-' + id).classList.add('on');
+  btn.classList.add('on');
+  document.getElementById('pg-title').textContent = title;
+  document.getElementById('pg-sub').textContent = sub;
+  if (id === 'history') renderHistory();
+  if (id === 'config') renderConfigPage();
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function startTimer(sec) {
+  stopTimer();
+  timerTotal = sec;
+  timerLeft = sec;
+  var disp = document.getElementById('timer-disp');
+  var bar = document.getElementById('timer-bar');
+  disp.className = 'timer-disp run';
+  updateTimerDisplay();
+  timerInterval = setInterval(function() {
+    timerLeft--;
+    updateTimerDisplay();
+    var pct = Math.round((1 - timerLeft / timerTotal) * 100);
+    bar.style.width = pct + '%';
+    if (timerLeft <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      disp.className = 'timer-disp done';
+      disp.textContent = 'GO !';
+      bar.style.width = '100%';
+      bar.style.background = 'var(--amber)';
+      // Vibration
+      if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  var m = Math.floor(timerLeft / 60);
+  var s = timerLeft % 60;
+  document.getElementById('timer-disp').textContent =
+    (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  var disp = document.getElementById('timer-disp');
+  var bar = document.getElementById('timer-bar');
+  disp.className = 'timer-disp';
+  disp.textContent = '00:00';
+  bar.style.width = '0%';
+  bar.style.background = 'var(--teal)';
+}
+
+// ── Session ───────────────────────────────────────────────────────────────────
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function renderSession() {
+  var noConfig = document.getElementById('sess-no-config');
+  var main = document.getElementById('sess-main');
+  if (!config || !config.cycles || !config.cycles.length) {
+    noConfig.style.display = 'block';
+    main.style.display = 'none';
+    return;
+  }
+  noConfig.style.display = 'none';
+  main.style.display = 'block';
+
+  var cycle = config.cycles[0];
+  document.getElementById('pg-sub').textContent = cycle.name;
+
+  var pills = document.getElementById('day-pills');
+  pills.innerHTML = cycle.days.map(function(d, i) {
+    return '<div class="dpill' + (i === curDay ? ' on' : '') + '" onclick="selDay(' + i + ')">' +
+      (d.is_rest ? '&#9711; ' : '') + d.name + '</div>';
+  }).join('');
+
+  renderForm();
+}
+
+function selDay(i) {
+  curDay = i;
+  document.querySelectorAll('.dpill').forEach(function(p, idx) {
+    p.classList.toggle('on', idx === i);
+  });
+  renderForm();
+}
+
+function setFeel(v, btn) {
+  curFeeling = v;
+  document.querySelectorAll('.fb').forEach(function(b, i) {
+    b.classList.toggle('on', i + 1 === v);
+  });
+}
+
+function renderForm() {
+  if (!config) return;
+  var cycle = config.cycles[0];
+  var day = cycle.days[curDay];
+  var form = document.getElementById('sess-form');
+
+  if (day.is_rest || !day.exercise_ids || !day.exercise_ids.length) {
+    form.innerHTML = '<div class="rest-msg"><div class="ico">&#9711;</div><p>Jour de repos —<br>récupération active.</p></div>';
+    return;
+  }
+
+  // Chercher session existante pour aujourd'hui + ce jour
+  var sessKey = todayISO() + '_j' + curDay;
+  var existingSess = sessions[sessKey];
+  var sessData = existingSess ? existingSess.data : {};
+
+  var html = '';
+  day.exercise_ids.forEach(function(eid) {
+    var ex = (config.exercises || []).find(function(e) { return e.id === eid; });
+    if (!ex) return;
+
+    // Dernières valeurs : session du jour si existe, sinon last_values
+    var prevSets = [];
+    if (sessData[eid] && Array.isArray(sessData[eid])) {
+      prevSets = sessData[eid];
+    } else if (config.last_values && config.last_values[eid]) {
+      prevSets = config.last_values[eid].sets || [];
+    }
+
+    var isCardio = ex.type === 'cardio_z2' || ex.type === 'hiit';
+    var bt = ex.is_compound ? '<span class="badge b-poly">&#9733;</span>' : '';
+    var bg = '<span class="badge b-grp">' + ex.muscle_group + '</span>';
+
+    html += '<div class="ex-block">';
+    html += '<div class="ex-name">' + ex.name + bt + '</div>';
+    html += '<div class="ex-meta">' + ex.muscle_group + (ex.is_compound ? ' &middot; Polyarticulaire' : '') + '</div>';
+
+    if (isCardio) {
+      var d2 = (typeof prevSets === 'object' && !Array.isArray(prevSets) && prevSets.mode) ? prevSets : {};
+      var mode = ex.type === 'hiit' ? 'hiit' : (d2.mode || 'z2');
+      // Boutons Zone 2 / HIIT
+      html += '<div class="cmode-row">';
+      html += '<div class="cmode' + (mode==='z2' ? ' on' : '') + '" id="cm-z2-' + eid + '" data-eid="' + eid + '" data-mode="z2" onclick="swCMclick(this)">Zone 2</div>';
+      html += '<div class="cmode' + (mode==='hiit' ? ' on' : '') + '" id="cm-hiit-' + eid + '" data-eid="' + eid + '" data-mode="hiit" onclick="swCMclick(this)">HIIT</div>';
+      html += '</div>';
+      if (mode === 'z2') {
+        var app2 = d2.appareil || 'velo';
+        html += '<div id="cm-body-' + eid + '">';
+        html += '<div class="cf-row"><label>Appareil</label>';
+        html += '<select id="c' + eid + '_app" style="flex:1;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:15px;padding:8px 10px">';
+        html += '<option value="velo"' + (app2==='velo'?' selected':'') + '>Vélo stationnaire</option>';
+        html += '<option value="elliptique"' + (app2==='elliptique'?' selected':'') + '>Elliptique</option>';
+        html += '<option value="rameur"' + (app2==='rameur'?' selected':'') + '>Rameur</option>';
+        html += '</select></div>';
+        html += '<div class="cf-row"><label>Durée totale</label><input class="set-inp" type="number" inputmode="numeric" id="c' + eid + '_dur" value="' + (d2.duree||'') + '" placeholder="40" style="max-width:110px"><span class="unit">min</span></div>';
+        html += '<div class="cf-row"><label>FC moyenne</label><input class="set-inp" type="number" inputmode="numeric" id="c' + eid + '_fcm" value="' + (d2.fc_moy||'') + '" placeholder="110" style="max-width:110px"><span class="unit">bpm</span></div>';
+        html += '<div class="cf-row"><label>FC max atteinte</label><input class="set-inp" type="number" inputmode="numeric" id="c' + eid + '_fcx" value="' + (d2.fc_max||'') + '" placeholder="118" style="max-width:110px"><span class="unit">bpm</span></div>';
+        html += '<div style="font-size:11px;color:var(--muted2);margin-top:5px">Zone 2 cible : 101–118 bpm</div>';
+        html += '</div>';
+      } else {
+        var ivs = d2.intervals || [{duree:3,bpm:90,bpm_reel:0},{duree:2,bpm:140,bpm_reel:0}];
+        var rounds = d2.rounds || 4;
+        html += '<div id="cm-body-' + eid + '">';
+        html += '<div class="cf-row"><label>Nombre de tours</label><input class="set-inp" type="number" inputmode="numeric" id="c' + eid + '_rounds" value="' + rounds + '" min="1" max="20" style="max-width:80px"></div>';
+        html += '<div class="set-hdrs" style="grid-template-columns:40px 1fr 1fr 1fr"><div></div><div class="set-hdr">Durée min</div><div class="set-hdr">BPM cible</div><div class="set-hdr">BPM réel</div></div>';
+        ivs.forEach(function(iv, i) {
+          html += '<div style="display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center">';
+          html += '<div class="set-lbl">#' + (i+1) + '</div>';
+          html += '<input class="set-inp" type="number" inputmode="decimal" id="c' + eid + '_iv' + i + '_dur" value="' + (iv.duree||'') + '" step="0.5">';
+          html += '<input class="set-inp" type="number" inputmode="numeric" id="c' + eid + '_iv' + i + '_bpm" value="' + (iv.bpm||'') + '">';
+          html += '<input class="set-inp" type="number" inputmode="numeric" id="c' + eid + '_iv' + i + '_real" value="' + (iv.bpm_reel||'') + '">';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+    } else {
+      html += '<div class="set-hdrs"><div></div><div class="set-hdr">Poids kg</div><div class="set-hdr">Reps</div></div>';
+      for (var s = 1; s <= 5; s++) {
+        var ps = prevSets[s - 1] || {};
+        var heavy = (s === 1);
+        var cls = heavy ? 'set-inp heavy' : 'set-inp';
+        var lbl = heavy ? '<div class="set-lbl heavy">S1&#9733;</div>' : '<div class="set-lbl">S' + s + '</div>';
+        var prevW = ps.weight || '';
+        var prevR = ps.reps || '';
+        html += '<div class="set-row">';
+        html += lbl;
+        html += '<div class="set-inp-wrap">';
+        html += '<input class="' + cls + '" type="number" inputmode="decimal" id="ex' + eid + '_s' + s + '_w" value="' + prevW + '" placeholder="—">';
+        if (prevW) html += '<div class="prev-val">préc: ' + prevW + '</div>';
+        html += '</div>';
+        html += '<div class="set-inp-wrap">';
+        html += '<input class="' + cls + '" type="number" inputmode="numeric" id="ex' + eid + '_s' + s + '_r" value="' + prevR + '" placeholder="' + (heavy ? '5-6' : '10') + '">';
+        if (prevR) html += '<div class="prev-val">préc: ' + prevR + '</div>';
+        html += '</div>';
+        html += '</div>';
+      }
+      // Tonnage live
+      html += '<div class="tonnage-line" id="ton-' + eid + '">Tonnage : —</div>';
+    }
+    html += '</div>';
+  });
+
+  html += '<input class="note-inp" type="text" id="sess-note" value="' +
+    (existingSess && existingSess.note ? existingSess.note.replace(/"/g, '&quot;') : '') +
+    '" placeholder="Note : douleur, variante, fatigue…">';
+  html += '<button class="save-btn" onclick="saveSession()">&#10003; Enregistrer la séance</button>';
+  html += '<div class="status-bar" id="sess-status"></div>';
+
+  form.innerHTML = html;
+
+  // Calculer tonnages initiaux et attacher listeners
+  if (config) {
+    var cycle2 = config.cycles[0];
+    var day2 = cycle2.days[curDay];
+    if (day2.exercise_ids) {
+      day2.exercise_ids.forEach(function(eid) {
+        var ex2 = (config.exercises || []).find(function(e) { return e.id === eid; });
+        if (!ex2 || ex2.type === 'cardio_z2' || ex2.type === 'hiit') return;
+        for (var s = 1; s <= 5; s++) {
+          var wi = document.getElementById('ex' + eid + '_s' + s + '_w');
+          var ri = document.getElementById('ex' + eid + '_s' + s + '_r');
+          if (wi) wi.addEventListener('input', function() { calcTonnage(eid); });
+          if (ri) ri.addEventListener('input', function() { calcTonnage(eid); });
+        }
+        calcTonnage(eid);
+      });
+    }
+  }
+}
+
+function calcTonnage(eid) {
+  var parts = [], total = 0;
+  for (var s = 1; s <= 5; s++) {
+    var wi = document.getElementById('ex' + eid + '_s' + s + '_w');
+    var ri = document.getElementById('ex' + eid + '_s' + s + '_r');
+    if (!wi || !ri) continue;
+    var w = parseFloat(wi.value) || 0;
+    var r = parseInt(ri.value) || 0;
+    if (w > 0 && r > 0) {
+      parts.push(w + '&#215;' + r);
+      total += w * r;
+    }
+  }
+  var el = document.getElementById('ton-' + eid);
+  if (el) {
+    if (parts.length) {
+      el.innerHTML = 'Tonnage : ' + parts.join(' + ') + ' = <strong>' + Math.round(total) + ' kg</strong>';
+    } else {
+      el.innerHTML = 'Tonnage : —';
+    }
+  }
+}
+
+function saveSession() {
+  if (!config) return;
+  var cycle = config.cycles[0];
+  var day = cycle.days[curDay];
+  var sessData = {};
+
+  if (day.exercise_ids) {
+    day.exercise_ids.forEach(function(eid) {
+      var ex = (config.exercises || []).find(function(e) { return e.id === eid; });
+      if (!ex) return;
+      if (ex.type === 'cardio_z2' || ex.type === 'hiit') {
+        var z2btn = document.getElementById('cm-z2-' + eid);
+        var mode = (z2btn && z2btn.classList.contains('on')) ? 'z2' : 'hiit';
+        if (mode === 'z2') {
+          sessData[eid] = {
+            mode: 'z2',
+            appareil: (document.getElementById('c' + eid + '_app') || {value:'velo'}).value,
+            duree: parseFloat((document.getElementById('c' + eid + '_dur') || {value:0}).value) || 0,
+            fc_moy: parseInt((document.getElementById('c' + eid + '_fcm') || {value:0}).value) || 0,
+            fc_max: parseInt((document.getElementById('c' + eid + '_fcx') || {value:0}).value) || 0
+          };
+        } else {
+          var rounds = parseInt((document.getElementById('c' + eid + '_rounds') || {value:4}).value) || 4;
+          var ivs2 = [];
+          for (var i = 0; i < 2; i++) {
+            ivs2.push({
+              duree: parseFloat((document.getElementById('c' + eid + '_iv' + i + '_dur') || {value:0}).value) || 0,
+              bpm: parseInt((document.getElementById('c' + eid + '_iv' + i + '_bpm') || {value:0}).value) || 0,
+              bpm_reel: parseInt((document.getElementById('c' + eid + '_iv' + i + '_real') || {value:0}).value) || 0
+            });
+          }
+          sessData[eid] = { mode: 'hiit', rounds: rounds, intervals: ivs2 };
+        }
+      } else {
+        var sets = [];
+        for (var s = 1; s <= 5; s++) {
+          var w = parseFloat(document.getElementById('ex' + eid + '_s' + s + '_w')?.value) || 0;
+          var r = parseInt(document.getElementById('ex' + eid + '_s' + s + '_r')?.value) || 0;
+          sets.push({ weight: w, reps: r });
+        }
+        sessData[eid] = sets;
+      }
+    });
+  }
+
+  var sessKey = todayISO() + '_j' + curDay;
+  sessions[sessKey] = {
+    cycle_id: cycle.id,
+    day_index: curDay,
+    date: todayISO(),
+    feeling: curFeeling,
+    note: document.getElementById('sess-note')?.value || '',
+    data: sessData,
+    synced: false,
+    saved_at: new Date().toISOString()
+  };
+
+  saveLocal();
+  updatePendingCount();
+
+  var st = document.getElementById('sess-status');
+  if (st) {
+    var d = new Date();
+    st.textContent = '&#10003; Enregistré le ' + d.toLocaleDateString('fr-BE', {day:'numeric',month:'long'}) + ' à ' + d.toLocaleTimeString('fr-BE', {hour:'2-digit',minute:'2-digit'});
+    st.className = 'status-bar';
+  }
+  toast('Séance enregistrée');
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+// ── Historique ────────────────────────────────────────────────────────────────
+function renderHistory() {
+  var keys = Object.keys(sessions).sort().reverse();
+  var total = keys.length;
+  var pending = keys.filter(function(k) { return !sessions[k].synced; }).length;
+
+  document.getElementById('hist-stats').innerHTML =
+    '<div class="stat-box"><div class="stat-val">' + total + '</div><div class="stat-lbl">Séances</div></div>' +
+    '<div class="stat-box"><div class="stat-val">' + pending + '</div><div class="stat-lbl">À exporter</div></div>' +
+    '<div class="stat-box"><div class="stat-val">' + (total - pending) + '</div><div class="stat-lbl">Synchronisées</div></div>';
+
+  var list = document.getElementById('hist-list');
+  if (!keys.length) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--muted2);text-align:center;padding:20px">Aucune séance enregistrée.</p>';
+    return;
+  }
+
+  var cycle = config ? config.cycles[0] : null;
+  list.innerHTML = keys.map(function(k) {
+    var s = sessions[k];
+    var dayName = cycle && cycle.days[s.day_index] ? cycle.days[s.day_index].name : 'J' + (s.day_index + 1);
+    var feelIcon = s.feeling === 1 ? '–' : s.feeling === 3 ? '+' : '◎';
+    var syncBadge = s.synced
+      ? '<span class="sess-badge synced">Sync</span>'
+      : '<span class="sess-badge new">À exporter</span>';
+    return '<div class="sess-item' + (s.synced ? ' synced' : '') + '">' +
+      '<div><div class="sess-date">' + s.date + '</div><div class="sess-label">' + dayName + ' &middot; Forme ' + feelIcon + '</div></div>' +
+      syncBadge +
+      '</div>';
+  }).join('');
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
+function renderConfigPage() {
+  var info = document.getElementById('cfg-cycle-info');
+  if (config && config.cycles && config.cycles.length) {
+    var c = config.cycles[0];
+    var exCount = (config.exercises || []).length;
+    info.innerHTML = '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">' + c.name + '</div>' +
+      '<div style="font-size:12px;color:var(--muted2)">' + c.days.length + ' jours &middot; ' + exCount + ' exercices &middot; Importé le ' + (config.exported_at || '?') + '</div>';
+  } else {
+    info.innerHTML = '<div style="font-size:14px;color:var(--muted2)">Aucune configuration chargée</div>';
+  }
+  updatePendingCount();
+}
+
+function updatePendingCount() {
+  var pending = Object.values(sessions).filter(function(s) { return !s.synced; }).length;
+  var txt = pending + ' séance(s) en attente';
+  var el = document.getElementById('pending-count');
+  if (el) el.textContent = txt;
+  var el2 = document.getElementById('pending-count2');
+  if (el2) el2.textContent = txt;
+}
+
+function importConfig(evt) {
+  var file = evt.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.exercises || !data.cycles) throw new Error('Format invalide');
+      config = data;
+      localStorage.setItem('gym_config', JSON.stringify(config));
+      renderSession();
+      renderConfigPage();
+      toast('Config chargée : ' + config.cycles[0].name);
+    } catch(err) {
+      toast('Erreur : ' + err.message, 'warn');
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+function exportPending() {
+  var toExport = {};
+  Object.keys(sessions).forEach(function(k) {
+    if (!sessions[k].synced) toExport[k] = sessions[k];
+  });
+  if (!Object.keys(toExport).length) {
+    toast('Aucune séance à exporter', 'warn');
+    return;
+  }
+  doExport(toExport, 'pending');
+  // Marquer comme synchronisées
+  Object.keys(toExport).forEach(function(k) { sessions[k].synced = true; });
+  saveLocal();
+  updatePendingCount();
+}
+
+function exportAll() {
+  if (!Object.keys(sessions).length) {
+    toast('Aucune séance enregistrée', 'warn');
+    return;
+  }
+  doExport(sessions, 'all');
+}
+
+function doExport(data, suffix) {
+  var today = new Date().toISOString().slice(0, 10);
+  var payload = {
+    export_type: 'gym_mobile_sessions',
+    exported_at: new Date().toISOString(),
+    device: navigator.userAgent.slice(0, 60),
+    sessions: data
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'gym_seances_' + suffix + '_' + today + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Export téléchargé — transfère vers OneDrive');
+}
+
+function clearAll() {
+  localStorage.removeItem('gym_config');
+  localStorage.removeItem('gym_sessions');
+  localStorage.removeItem('gym_pc_ip');
+  config = null;
+  sessions = {};
+  renderSession();
+  renderConfigPage();
+  toast('Données effacées');
+}
+
+// ── WiFi sync ─────────────────────────────────────────────────────────────────
+function getPcUrl() {
+  var ip = document.getElementById('pc-ip') ?
+    document.getElementById('pc-ip').value.trim() :
+    (localStorage.getItem('gym_pc_ip') || '');
+  if (!ip) return null;
+  if (!ip.startsWith('http')) ip = 'http://' + ip;
+  return ip;
+}
+
+function savePcIp() {
+  var el = document.getElementById('pc-ip');
+  if (el && el.value.trim()) {
+    localStorage.setItem('gym_pc_ip', el.value.trim());
+  }
+}
+
+async function testConnection() {
+  var url = getPcUrl();
+  if (!url) { toast('Saisis l\'adresse PC', 'warn'); return; }
+  savePcIp();
+  var st = document.getElementById('conn-status');
+  st.textContent = 'Test en cours…';
+  st.style.color = 'var(--muted2)';
+  try {
+    var r = await fetch(url + '/api/ping', { signal: AbortSignal.timeout(4000) });
+    var d = await r.json();
+    if (d.ok) {
+      st.textContent = '✓ Connecté — ' + d.server;
+      st.style.color = 'var(--teal)';
+      toast('PC trouvé');
+    } else {
+      throw new Error('Réponse inattendue');
+    }
+  } catch(e) {
+    st.textContent = '✗ Impossible de joindre le PC — vérifie l\'adresse et le WiFi';
+    st.style.color = 'var(--red)';
+    toast('PC non joignable', 'warn');
+  }
+}
+
+async function wifiPullConfig() {
+  var url = getPcUrl();
+  if (!url) { toast('Saisis et teste l\'adresse PC d\'abord', 'warn'); return; }
+  savePcIp();
+  var st = document.getElementById('sync-status');
+  st.textContent = 'Réception de la config…';
+  st.style.color = 'var(--muted2)';
+  try {
+    var r = await fetch(url + '/api/export-mobile', { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('Erreur serveur ' + r.status);
+    var data = await r.json();
+    if (!data.exercises || !data.cycles) throw new Error('Format invalide');
+    config = data;
+    localStorage.setItem('gym_config', JSON.stringify(config));
+    renderSession();
+    renderConfigPage();
+    st.textContent = '✓ Config reçue — ' + config.cycles[0].name;
+    st.style.color = 'var(--teal)';
+    toast('Config synchronisée depuis le PC');
+  } catch(e) {
+    st.textContent = '✗ Erreur : ' + e.message;
+    st.style.color = 'var(--red)';
+    toast('Erreur réception config', 'warn');
+  }
+}
+
+async function wifiPushSessions() {
+  var url = getPcUrl();
+  if (!url) { toast('Saisis et teste l\'adresse PC d\'abord', 'warn'); return; }
+  savePcIp();
+  var pending = Object.keys(sessions).filter(function(k) { return !sessions[k].synced; });
+  if (!pending.length) { toast('Aucune séance à envoyer', 'warn'); return; }
+  var st = document.getElementById('sync-status');
+  st.textContent = 'Envoi de ' + pending.length + ' séance(s)…';
+  st.style.color = 'var(--muted2)';
+  try {
+    // Construire le payload au format attendu par import-session
+    var toSend = {};
+    pending.forEach(function(k) { toSend[k] = sessions[k]; });
+    var payload = {
+      export_type: 'gym_mobile_sessions',
+      exported_at: new Date().toISOString(),
+      sessions: toSend
+    };
+    // Créer un Blob et l'envoyer comme fichier multipart
+    var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    var form = new FormData();
+    form.append('file', blob, 'sync.json');
+    var r = await fetch(url + '/api/import-session', {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(10000)
+    });
+    var data = await r.json();
+    if (data.ok) {
+      // Marquer comme synchronisées
+      pending.forEach(function(k) { sessions[k].synced = true; });
+      saveLocal();
+      updatePendingCount();
+      st.textContent = '✓ ' + data.message;
+      st.style.color = 'var(--teal)';
+      toast(data.message);
+    } else {
+      throw new Error(data.error || 'Erreur serveur');
+    }
+  } catch(e) {
+    st.textContent = '✗ Erreur : ' + e.message;
+    st.style.color = 'var(--red)';
+    toast('Erreur envoi séances', 'warn');
+  }
+}
+
+function swCMclick(el) {
+  var eid = el.getAttribute('data-eid');
+  var mode = el.getAttribute('data-mode');
+  swCM(eid, mode);
+}
+function swCM(eid, mode) {
+  var z2 = document.getElementById('cm-z2-' + eid);
+  var hiit = document.getElementById('cm-hiit-' + eid);
+  if (z2) z2.classList.toggle('on', mode === 'z2');
+  if (hiit) hiit.classList.toggle('on', mode === 'hiit');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'warn' ? ' warn' : '');
+  setTimeout(function() { t.classList.remove('show'); }, 2800);
+}
+
+init();
+</script>
+</body>
+</html>
