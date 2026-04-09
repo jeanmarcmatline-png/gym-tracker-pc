@@ -484,11 +484,31 @@ async function drawChart(){
 }
 
 async function genReport(){
-  if(!activeCycleId){document.getElementById('rep-area').value='Sélectionne un programme actif.';return;}
-  var r=await fetch('/api/report?cycle_id='+activeCycleId); var d=await r.json();
-  document.getElementById('rep-area').value=d.report||'';
+  if(!activeCycleId){document.getElementById('rep-area').value='Sélectionne un programme actif.';toast('Aucun programme actif sélectionné','warn');return;}
+  toast('Génération en cours…');
+  try{
+    var r=await fetch('/api/report?cycle_id='+activeCycleId);
+    if(!r.ok) throw new Error('Erreur serveur '+r.status);
+    var d=await r.json();
+    document.getElementById('rep-area').value=d.report||'';
+    toast('Rapport généré');
+  }catch(e){toast('Erreur : '+e.message,'warn');}
 }
-async function copyReport(){await navigator.clipboard.writeText(document.getElementById('rep-area').value);toast('Rapport copié');}
+async function copyReport(){
+  var text=document.getElementById('rep-area').value;
+  if(!text){toast('Génère d\'abord un rapport','warn');return;}
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    }else{
+      var ta=document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    toast('Rapport copié');
+  }catch(e){toast('Erreur copie : '+e.message,'warn');}
+}
 
 async function exportMobile(){
   var msg=document.getElementById('mob-exp-msg');

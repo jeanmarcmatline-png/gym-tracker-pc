@@ -499,22 +499,4 @@ def import_session():
     conn.close()
     return jsonify({
         'ok': True,
-        'imported': imported,
-        'updated': updated,
-        'errors': errors,
-        'message': '{} importée(s), {} mise(s) à jour'.format(imported, updated)
-    })
-
-
-@app.route('/api/ping')
-def ping():
-    return jsonify({'ok': True, 'server': 'Gym Tracker PC'})
-
-@app.route('/mobile')
-def mobile():
-    return render_template('gym_mobile.html')
-
-if __name__ == '__main__':
-    init_db()
-    print('\n  Gym Tracker -> http://localhost:5001\n')
-    app.run(debug=False, port=5001, host='0.0.0.0')
+     
