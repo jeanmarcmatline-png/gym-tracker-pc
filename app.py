@@ -516,5 +516,5 @@ def mobile():
 
 if __name__ == '__main__':
     init_db()
-    print('\n  Gym Tracker -> http://localhost:5000\n')
-    app.run(debug=False, port=5000, host='0.0.0.0')
+    print('\n  Gym Tracker -> http://localhost:5001\n')
+    app.run(debug=False, port=5001, host='0.0.0.0')
