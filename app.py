@@ -401,6 +401,10 @@ def report():
     return jsonify({'report':'\n'.join(L)})
 
 
+@app.route('/api/ping')
+def ping():
+    return jsonify({'ok': True, 'server': 'Gym Tracker PC'})
+
 @app.route('/api/export-mobile')
 def export_mobile():
     """Génère le fichier config pour l'app mobile."""
