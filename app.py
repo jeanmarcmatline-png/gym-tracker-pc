@@ -405,6 +405,22 @@ def report():
 def ping():
     return jsonify({'ok': True, 'server': 'Gym Tracker PC'})
 
+@app.route('/api/last-values')
+def last_values_all():
+    """Derniers poids/reps connus par exercice, tous cycles confondus."""
+    conn = get_db()
+    rows = conn.execute('SELECT * FROM sessions ORDER BY date DESC').fetchall()
+    conn.close()
+    result = {}
+    for s in rows:
+        data = json.loads(s['data_json'])
+        for ex_id, series in data.items():
+            if ex_id not in result and isinstance(series, list):
+                valid = [sd for sd in series if float(sd.get('weight') or 0) > 0 or int(sd.get('reps') or 0) > 0]
+                if valid:
+                    result[ex_id] = {'date': s['date'], 'sets': valid}
+    return jsonify(result)
+
 @app.route('/api/export-mobile')
 def export_mobile():
     """Génère le fichier config pour l'app mobile."""
