@@ -162,7 +162,6 @@ def get_cycle(cid):
 def del_cycle(cid):
     conn = get_db()
     conn.execute('DELETE FROM cycles WHERE id=?',(cid,))
-    conn.execute('DELETE FROM sessions WHERE cycle_id=?',(cid,))
     conn.commit(); conn.close()
     return jsonify({'ok':True})
 
