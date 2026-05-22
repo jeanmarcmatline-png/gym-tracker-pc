@@ -3,6 +3,7 @@ var curDay=0, curFeeling=2;
 var curDate=new Date().toISOString().slice(0,10);
 var pickerDay=null, pickerSel=[];
 var daysStruct=[];
+var editedCycleId=null;
 var libFilter='Tous';
 var progChart=null;
 var calViewYear=new Date().getFullYear();
@@ -27,6 +28,7 @@ async function init(){
   if(lbl) lbl.textContent=dateLabel(curDate);
   await loadExercises();
   await loadCycles();
+  loadBodyWeight();
   var saved=localStorage.getItem('gym_active');
   if(saved){
     var sel=document.getElementById('sel-cycle');
@@ -179,7 +181,7 @@ function buildDays(){
   if(daysStruct.length!==n){daysStruct=[];for(var i=0;i<n;i++) daysStruct.push({name:'Jour '+(i+1),exercise_ids:[],is_rest:false});}
   renderDaysBuilder();
 }
-function resetBuilder(){daysStruct=[];document.getElementById('cy-name').value='';buildDays();}
+function resetBuilder(){daysStruct=[];editedCycleId=null;document.getElementById('cy-name').value='';buildDays();}
 function renderDaysBuilder(){
   document.getElementById('days-bld').innerHTML=daysStruct.map(function(d,i){
     var chips=d.exercise_ids.map(function(eid){var ex=exercises.find(function(e){return e.id===eid;});return ex?'<div class="chip"><span>'+ex.name+'</span><button class="chip-x" onclick="rmExDay('+i+','+eid+')">&#215;</button></div>':'';}).join('');
@@ -192,11 +194,15 @@ function rmExDay(i,eid){daysStruct[i].exercise_ids=daysStruct[i].exercise_ids.fi
 async function saveCycle(){
   var name=document.getElementById('cy-name').value.trim();
   if(!name){toast('Entre un nom','warn');return;}
-  var r=await fetch('/api/cycles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,days:daysStruct})});
+  var payload={name:name,days:daysStruct};
+  if(editedCycleId) payload.id=editedCycleId;
+  var r=await fetch('/api/cycles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   var data=await r.json();
   if(!data.ok){toast('Erreur sauvegarde','warn');return;}
-  await loadCycles(); document.getElementById('sel-cycle').value=data.id;
-  await setActiveCycle(data.id); renderCyclesList(); toast('Programme enregistré');
+  await loadCycles();
+  loadBodyWeight(); document.getElementById('sel-cycle').value=data.id;
+  await setActiveCycle(data.id); renderCyclesList(); toast(editedCycleId?'Programme modifié':'Programme enregistré');
+  editedCycleId=null;
 }
 function renderCyclesList(){
   var el=document.getElementById('cy-list');
@@ -209,13 +215,14 @@ function renderCyclesList(){
 async function editCycle(id){
   var r=await fetch('/api/cycles/'+id); var c=await r.json();
   document.getElementById('cy-name').value=c.name; document.getElementById('cy-days').value=c.days.length;
-  daysStruct=c.days; renderDaysBuilder(); goPage('cycles',document.querySelectorAll('.nav-item')[1]);
+  daysStruct=c.days; editedCycleId=id; renderDaysBuilder(); goPage('cycles',document.querySelectorAll('.nav-item')[1]);
 }
 async function delCycle(id){
   if(!confirm('Supprimer ce programme et toutes ses séances ?')) return;
   await fetch('/api/cycles/'+id,{method:'DELETE'});
   if(activeCycleId==id){activeCycleId=null;activeCycle=null;localStorage.removeItem('gym_active');}
-  await loadCycles(); renderCyclesList();
+  await loadCycles();
+  loadBodyWeight(); renderCyclesList();
 }
 async function setActiveCycle(id){
   activeCycleId=id?parseInt(id):null;
@@ -375,14 +382,15 @@ async function loadSessionForm(){
         html+='</tbody></table></div>';
       }
     } else {
-      html+='<table class="set-tbl"><thead><tr><th style="text-align:left">Série</th><th>Poids kg</th><th>Reps</th></tr></thead><tbody>';
+      html+='<table class="set-tbl"><thead><tr><th style="text-align:left">Série</th><th>Poids kg</th><th>Reps</th><th style="width:44px">RIR</th></tr></thead><tbody>';
       for(var s=1;s<=5;s++){
         var ps=Array.isArray(prev)?(prev[s-1]||{}):{};
         var heavy=(s===1);
         html+='<tr class="'+(heavy?'s1bg':'')+'">'+
           '<td class="sn" style="color:'+(heavy?'var(--amber)':'var(--muted)')+'">S'+s+(heavy?' &#9733;':'')+'</td>'+
           '<td class="'+(heavy?'s1bg':'')+'"><input type="number" id="ex'+eid+'_s'+s+'_w" value="'+(ps.weight||'')+'" min="0" step="0.5" placeholder="—" '+ro+' '+roStyle+'></td>'+
-          '<td><input type="number" id="ex'+eid+'_s'+s+'_r" value="'+(ps.reps||'')+'" min="0" placeholder="'+(heavy?'5-6':'10')+'" '+ro+' '+roStyle+'></td></tr>';
+          '<td><input type="number" id="ex'+eid+'_s'+s+'_r" value="'+(ps.reps||'')+'" min="0" placeholder="'+(heavy?'5-6':'10')+'" '+ro+' '+roStyle+'></td>'+
+          '<td><input type="number" id="ex'+eid+'_s'+s+'_rir" value="'+(ps.rir!=null?ps.rir:'')+'" min="0" max="5" placeholder="?" style="width:44px;font-size:11px;text-align:center" '+ro+' '+roStyle+'></td></tr>';
       }
       html+='</tbody></table>';
     }
@@ -397,8 +405,10 @@ async function loadSessionForm(){
     html+='<div class="btn-row"><button class="btn pri" onclick="saveSession()">&#10003; Enregistrer la séance</button></div>';
   } else {
     var dl2=new Date(curDate+'T12:00:00').toLocaleDateString('fr-BE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    html+='<div style="margin-top:12px;padding:10px 16px;background:var(--adim);border:1px solid var(--amber);border-radius:9px;font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px">'+
-      '<span>&#128274;</span><span>Séance du '+dl2+' — lecture seule</span></div>';
+    html+='<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<div style="padding:10px 16px;background:var(--adim);border:1px solid var(--amber);border-radius:9px;font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px;flex:1;min-width:200px">'+
+      '<span>&#128274;</span><span>Séance du '+dl2+' — lecture seule</span></div>'+
+      '<button class="btn sm danger" onclick="if(confirm(\'Supprimer cette séance ?\')) delSession('+exact.id+')">&#128465; Supprimer</button></div>';
   }
   html+='<div id="sess-msg" style="font-size:12px;color:var(--teal);min-height:18px;margin-top:8px;font-family:\'DM Mono\',monospace"></div>';
   form.innerHTML=html;
@@ -434,7 +444,9 @@ async function saveSession(){
       for(var s=1;s<=5;s++){
         var w=parseFloat((document.getElementById('ex'+eid+'_s'+s+'_w')||{value:0}).value)||0;
         var rp=parseInt((document.getElementById('ex'+eid+'_s'+s+'_r')||{value:0}).value)||0;
-        sets.push({weight:w,reps:rp});
+        var rirEl=document.getElementById('ex'+eid+'_s'+s+'_rir');
+        var rir=(rirEl&&rirEl.value!=='')?parseInt(rirEl.value):null;
+        sets.push({weight:w,reps:rp,rir:rir});
       }
       sessionData[eid]=sets;
     }
@@ -443,6 +455,13 @@ async function saveSession(){
   await fetch('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cycle_id:activeCycleId,day_index:curDay,date:curDate,feeling:curFeeling,note:note,data:sessionData})});
   toast('Séance enregistrée');
   await loadSessionForm();
+}
+async function delSession(sid){
+  if(!confirm('Supprimer cette séance ?')) return;
+  await fetch('/api/sessions/'+sid,{method:'DELETE'});
+  toast('Séance supprimée');
+  await loadSessionForm();
+  if(activeCycleId) await loadProgress();
 }
 
 async function loadProgress(){
@@ -457,6 +476,7 @@ async function loadProgress(){
   var sel=document.getElementById('prog-ex');
   sel.innerHTML='<option value="">— Choisir un exercice —</option>'+Object.keys(prog).map(function(k){return '<option value="'+k+'">'+prog[k].name+'</option>';}).join('');
   if(sel.value) drawChart();
+  try{var rBw=await fetch('/api/body-weights');drawBodyWeightChart(await rBw.json());}catch(e){}
 }
 async function drawChart(){
   var key=document.getElementById('prog-ex').value; if(!key) return;
@@ -543,6 +563,97 @@ async function importSession(evt){
   }catch(e){if(msg){msg.textContent='Erreur : '+e.message;msg.style.color='var(--red)';}toast('Erreur import','warn');}
   evt.target.value='';
 }
+
+async function createBackup(){
+  var r=await fetch('/api/backup',{method:'POST'});
+  var d=await r.json();
+  if(d.ok) toast('Backup créé : '+d.filename);
+  else toast('Erreur backup','warn');
+}
+async function toggleBackupList(){
+  var el=document.getElementById('backup-list');
+  if(el.style.display==='block'){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<span style="font-size:11px;color:var(--muted)">Chargement…</span>';
+  try{
+    var r=await fetch('/api/backups'); var backups=await r.json();
+    if(!backups.length){el.innerHTML='<span style="font-size:11px;color:var(--muted2)">Aucune sauvegarde</span>';return;}
+    el.innerHTML=backups.slice(0,10).map(function(b){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px solid var(--border)">'+
+        '<span style="color:var(--muted)">'+b.date+' ('+b.size_kb+' Ko)</span>'+
+        '<button class="btn sm teal" style="padding:2px 7px;font-size:10px" onclick="restoreBackup(\''+b.filename+'\')">Restaurer</button></div>';
+    }).join('');
+  }catch(e){el.innerHTML='<span style="font-size:11px;color:var(--red)">Erreur</span>';}
+}
+async function restoreBackup(filename){
+  if(!confirm('Restaurer '+filename+' ? La base actuelle sera remplacée (une sauvegarde de sécurité sera créée).')) return;
+  var r=await fetch('/api/restore/'+filename,{method:'POST'});
+  var d=await r.json();
+  if(d.ok){
+    toast('Base restaurée — recharger la page');
+    document.getElementById('backup-list').style.display='none';
+    setTimeout(function(){location.reload();},1500);
+  } else {
+    toast('Erreur : '+d.error,'warn');
+  }
+}
+
+async function saveBodyWeight(){
+  var inp=document.getElementById('body-weight-input');
+  var w=parseFloat(inp.value);
+  if(!w||w<30||w>250){toast('Poids invalide (30-250 kg)','warn');return;}
+  await fetch('/api/body-weights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:todayISO(),weight_kg:w})});
+  inp.value='';
+  toast('Poids enregistré : '+w+' kg');
+  loadBodyWeight();
+}
+async function loadBodyWeight(){
+  try{
+    var r=await fetch('/api/body-weights'); var bw=await r.json();
+    var last=bw[bw.length-1];
+    var el=document.getElementById('bw-last');
+    if(last){
+      var d=new Date(last.date+'T12:00:00').toLocaleDateString('fr-BE',{day:'numeric',month:'short'});
+      el.textContent='Dernier : '+last.weight_kg+' kg ('+d+')';
+    } else {
+      el.textContent='Aucune donnée';
+    }
+    // Mettre à jour le graphique si visible
+    if(typeof drawBodyWeightChart==='function') drawBodyWeightChart(bw);
+  }catch(e){}
+}
+
+var bwChart=null;
+function drawBodyWeightChart(data){
+  var canvas=document.getElementById('bw-chart');
+  var noData=document.getElementById('bw-no-data');
+  if(!data||!data.length){
+    if(canvas) canvas.style.display='none';
+    if(noData) noData.style.display='block';
+    return;
+  }
+  if(canvas) canvas.style.display='block';
+  if(noData) noData.style.display='none';
+  if(bwChart) bwChart.destroy();
+  var labels=data.map(function(p){return p.date;});
+  var vals=data.map(function(p){return p.weight_kg;});
+  bwChart=new Chart(canvas,{
+    type:'line',
+    data:{labels:labels,datasets:[
+      {label:'Poids (kg)',data:vals,borderColor:'#4ecba4',backgroundColor:'rgba(78,203,164,0.1)',tension:.3,fill:true,pointBackgroundColor:'#4ecba4',pointRadius:4,pointHoverRadius:6}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#8888a0',font:{family:'DM Mono',size:11}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#8888a0',font:{family:'DM Mono',size:11},callback:function(v){return v+' kg';}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+
+
 
 function toast(msg,type){
   var t=document.getElementById('toast');

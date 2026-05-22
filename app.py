@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-import sqlite3, json, os
+import sqlite3, json, os, shutil, glob
 from datetime import datetime
 
 app = Flask(__name__)
@@ -36,6 +36,11 @@ def init_db():
             feeling INTEGER DEFAULT 2,
             note TEXT DEFAULT '',
             data_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS body_weights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL UNIQUE,
+            weight_kg REAL NOT NULL
         );
     ''')
     count = conn.execute('SELECT COUNT(*) FROM exercises').fetchone()[0]
@@ -102,6 +107,7 @@ def seed_exercises(conn):
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/api/exercises', methods=['GET'])
 def get_exercises():
@@ -252,6 +258,14 @@ def exact_session():
     d = dict(row); d['data'] = json.loads(d['data_json'])
     return jsonify(d)
 
+@app.route('/api/sessions/<int:sid>', methods=['DELETE'])
+def del_session(sid):
+    conn = get_db()
+    conn.execute('DELETE FROM sessions WHERE id=?', (sid,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
 @app.route('/api/sessions/last')
 def last_session():
     cid = request.args.get('cycle_id')
@@ -400,6 +414,66 @@ def report():
     return jsonify({'report':'\n'.join(L)})
 
 
+import shutil, glob
+
+BACKUP_DIR = os.path.join(os.path.dirname(__file__), 'backups')
+
+@app.route('/api/backup', methods=['POST'])
+def create_backup():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_name = f'gym_{ts}.db'
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
+    shutil.copy2(DB, backup_path)
+    return jsonify({'ok': True, 'filename': backup_name})
+
+@app.route('/api/backups', methods=['GET'])
+def list_backups():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    files = sorted(glob.glob(os.path.join(BACKUP_DIR, 'gym_*.db')), reverse=True)
+    result = []
+    for f in files:
+        name = os.path.basename(f)
+        size = os.path.getsize(f)
+        mtime = os.path.getmtime(f)
+        result.append({
+            'filename': name,
+            'size_kb': round(size / 1024, 1),
+            'date': datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M')
+        })
+    return jsonify(result)
+
+@app.route('/api/restore/<filename>', methods=['POST'])
+def restore_backup(filename):
+    safe_name = os.path.basename(filename)
+    backup_path = os.path.join(BACKUP_DIR, safe_name)
+    if not os.path.exists(backup_path):
+        return jsonify({'ok': False, 'error': 'Fichier introuvable'}), 404
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    safety = os.path.join(BACKUP_DIR, f'AVANT_RESTORE_{ts}.db')
+    shutil.copy2(DB, safety)
+    shutil.copy2(backup_path, DB)
+    return jsonify({'ok': True, 'safety': os.path.basename(safety)})
+
+
+@app.route('/api/body-weights', methods=['GET'])
+def get_body_weights():
+    conn = get_db()
+    rows = conn.execute('SELECT * FROM body_weights ORDER BY date ASC').fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/body-weights', methods=['POST'])
+def add_body_weight():
+    d = request.json
+    conn = get_db()
+    conn.execute('INSERT OR REPLACE INTO body_weights (date, weight_kg) VALUES (?,?)',
+        (d['date'], d['weight_kg']))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/ping')
 def ping():
     return jsonify({'ok': True, 'server': 'Gym Tracker PC'})
@@ -446,13 +520,16 @@ def export_mobile():
                         'date': s['date'],
                         'sets': valid
                     }
+    bw_rows = conn.execute('SELECT * FROM body_weights ORDER BY date ASC').fetchall()
+    body_weights = [dict(r) for r in bw_rows]
     conn.close()
     payload = {
         'version': '1.0',
         'exported_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'exercises': exercises,
         'cycles': cycles,
-        'last_values': last_values
+        'last_values': last_values,
+        'body_weights': body_weights
     }
     from flask import Response
     return Response(
