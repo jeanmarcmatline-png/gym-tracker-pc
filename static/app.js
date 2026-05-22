@@ -554,7 +554,7 @@ async function importSession(evt){
       var txt=data.message||'Import OK';
       if(data.errors&&data.errors.length) txt+=' ('+data.errors.length+' erreur(s))';
       if(msg){msg.textContent=txt;msg.style.color='var(--teal)';}
-      toast('Import terminé');
+      toast(data.message||'Import terminé');
       if(activeCycle) await setActiveCycle(activeCycleId);
     } else {
       if(msg){msg.textContent='Erreur : '+data.error;msg.style.color='var(--red)';}

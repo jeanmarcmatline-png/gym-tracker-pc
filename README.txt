@@ -8,7 +8,7 @@
 1. Dézippe le dossier `gym_app` où tu veux (ex: `C:\Users\Jean-Marc\gym_app`)
 2. Double-clique sur `lancer.bat`
 3. Flask s'installe automatiquement si besoin
-4. Ouvre Chrome sur http://localhost:5000
+4. Ouvre Chrome sur http://localhost:5001
 
 ## Utilisation quotidienne
 1. Double-clique `lancer.bat`

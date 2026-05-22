@@ -593,8 +593,20 @@ def import_session():
 
     conn.commit()
     conn.close()
+
+    # Construire un message descriptif
+    parts = []
+    if imported:
+        parts.append('{} séance(s) importée(s)'.format(imported))
+    if updated:
+        parts.append('{} séance(s) mise(s) à jour'.format(updated))
+    if errors:
+        parts.append('{} erreur(s)'.format(len(errors)))
+    message = ', '.join(parts) if parts else 'Aucune séance traitée'
+
     return jsonify({
         'ok': True,
+        'message': message,
         'imported': imported,
         'updated': updated,
         'errors': errors
